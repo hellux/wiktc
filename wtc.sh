@@ -89,12 +89,14 @@ fi
 
 [ -z "$query_word" ] && die "no query word specifed"
 
+query_uri="$(printf '"%s"' "$query_word" | jq -r @uri)"
+
 if [ "$search" = "false" ] || [ -n "$hint" ]; then
-    page="$CCHDIR/$wikilang/$query_word"
+    page="$CCHDIR/$wikilang/$query_uri"
     if [ -r "$page" ]; then
         found=true;
     else
-        code=$(html "$query_word")
+        code=$(html "$query_uri")
         if [ "$code" -eq 200 ]; then
             found=true;
             mkdir -p "$(dirname "$page")"
@@ -110,7 +112,6 @@ fi
 if [ "$found" = "true" ]; then
     $HTML_READER "$RESPONSE" | grep -v "Link: " | less
 else
-    query_uri="$(printf '"%s"' "$query_word" | jq -r @uri)"
     code=$(search "$query_uri")
     if [ "$code" -ne 200 ]; then
         die "Search failed: http code $code."
