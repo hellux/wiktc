@@ -19,6 +19,7 @@ CACHE="${WTC_CACHE:-false}"
 
 die() {
     echo "$*" 1>&2
+    rm -rf "$TMPDIR"
     exit 1
 }
 
