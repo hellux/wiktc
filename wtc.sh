@@ -11,7 +11,6 @@ else CCHDIR="$XDG_CACHE_HOME/wtc"
 fi
 
 SEARCH_RESULTS="$CCHDIR/words"
-RESPONSE="$TMPDIR/resp"
 
 HTML_DEFAULT="elinks -no-numbering -no-references -dump -dump-color-mode 1"
 HTML_READER="${WTC_HTML_READER:-$HTML_DEFAULT}"
@@ -29,16 +28,19 @@ search() {
     code=$(curl -w "%{http_code}" -o "$TMPDIR/request" -L -s "$search_url")
     if [ "$code" -eq 200 ]; then
         jq -r '.query.prefixsearch|map(.title)|@tsv' "$TMPDIR/request" \
-            | sed 's/\t/\n/g' > "$SEARCH_RESULTS"
+            | sed 's/\t/\n/g' > "$TMPDIR/results"
     fi
-    rm -f "$TMPDIR/request"
+
+    if [ "$(cat "$TMPDIR/results")" != "\n" ]; then
+        cp "$TMPDIR/results" "$SEARCH_RESULTS"
+    fi
     echo "$code"
 }
 
-html() {
+get_html() {
     html_base="${rest_base}/page/html/"
     html_url="${html_base}$*"
-    curl -L -w "%{http_code}" -s "$html_url" -o "$RESPONSE"
+    curl -L -w "%{http_code}" -s "$html_url" -o "$TMPDIR/page"
 }
 
 mkdir -p "$TMPDIR" || die "Could not create tmp dir at $TMPDIR"
@@ -93,13 +95,14 @@ fi
 if [ "$search" = "false" ] || [ -n "$hint" ]; then
     page="$CCHDIR/$wikilang/$query_word"
     if [ -r "$page" ]; then
+        cp "$page" "$TMPDIR/page"
         found=true;
     else
-        code=$(html "$query_word")
+        code=$(get_html "$query_word")
         if [ "$code" -eq 200 ]; then
             found=true;
             mkdir -p "$(dirname "$page")"
-            [ "$CACHE" = "true" ] && cp "$RESPONSE" "$page"
+            [ "$CACHE" = "true" ] && cp "$TMPDIR/page" "$page"
         elif [ "$code" -eq 404 ]; then
             found=false;
         else
@@ -109,7 +112,7 @@ if [ "$search" = "false" ] || [ -n "$hint" ]; then
 fi
 
 if [ "$found" = "true" ]; then
-    $HTML_READER "$RESPONSE" | grep -v "Link: " | less
+    $HTML_READER "$TMPDIR/page" | grep -v "Link: " | less
 else
     query_uri="$(printf '"%s"' "$query_word" | jq -r @uri)"
     code=$(search "$query_uri")
@@ -118,7 +121,7 @@ else
     fi
     if [ -n "$(head -n1 $SEARCH_RESULTS)" ]; then
         nl -w 2 -s "]  $(printf "\033[0;34m")" "$SEARCH_RESULTS" \
-            | sed -e 's/^/\x1B[0;2m[/' 
+            | sed -e 's/^/\x1B[0;2m[/'
     else
         printf 'No results found for "%s"\n' "$query_word"
     fi
