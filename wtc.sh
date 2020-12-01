@@ -110,7 +110,7 @@ if [ "$search" = "false" ] || [ -n "$hint" ]; then
 fi
 
 if [ "$found" = "true" ]; then
-    $HTML_READER "$RESPONSE" | grep -v "Link: " | less
+    $HTML_READER "$RESPONSE" | grep -v "Link: " | less -r
 else
     code=$(search "$query_uri")
     if [ "$code" -ne 200 ]; then
