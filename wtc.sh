@@ -1,4 +1,4 @@
-#!/bin/env sh
+#!/bin/sh
 
 if [ -z "$XDG_RUNTIME_DIR" ];
 then TMPDIR="/tmp/wtc"
